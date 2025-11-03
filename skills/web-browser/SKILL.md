@@ -31,9 +31,10 @@ Navigate current tab or open new tab.
 \`\`\`bash
 ./tools/eval.js 'document.title'
 ./tools/eval.js 'document.querySelectorAll("a").length'
+./tools/eval.js 'JSON.stringify(Array.from(document.querySelectorAll("a")).map(a => ({ text: a.textContent.trim(), href: a.href })).filter(link => !link.href.startsWith("https://")))'
 \`\`\`
 
-Execute JavaScript in active tab (async context).
+Execute JavaScript in active tab (async context).  Be careful with string escaping, best to use single quotes.
 
 ## Screenshot
 

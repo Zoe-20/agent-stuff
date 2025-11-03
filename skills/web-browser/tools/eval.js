@@ -23,10 +23,19 @@ if (!p) {
   process.exit(1);
 }
 
-const result = await p.evaluate((c) => {
-  const AsyncFunction = (async () => {}).constructor;
-  return new AsyncFunction(`return (${c})`)();
-}, code);
+let result;
+
+try {
+  result = await p.evaluate((c) => {
+    const AsyncFunction = (async () => {}).constructor;
+    return new AsyncFunction(`return (${c})`)();
+  }, code);
+} catch (e) {
+  console.log("Failed to evaluate expression");
+  console.log(`  Expression: ${code}`);
+  console.log(e);
+  process.exit(1);
+}
 
 if (Array.isArray(result)) {
   for (let i = 0; i < result.length; i++) {
