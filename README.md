@@ -1,11 +1,12 @@
 # Agent Commands
 
-This repository contains command files that I use in some form with projects.  Note that I usually fine-tune these for projects so they might not work without modification for you.
+This repository contains command files and skills that I use in some form with projects.  Note that I usually fine-tune these for projects so they might not work without modification for you.
 
 They are divided into two main categories:
 
 * [`common`](common): These are global commands I share across projects.
 * [`specific`](specific): These are commands tailored for specific projects and are mostly just for inspiration.
+* [`skills`](skills): These are skills for Claude.
 
 ## Handoff/Pickup Commands
 
@@ -32,3 +33,7 @@ These are commands that do not work without tuning!  But you can put claude to t
 
 * [`/make-release`](specific/make-release.md) - Automates repository release with version management
 * [`/update-changelog`](specific/update-changelog.md) - Updates changelog with recent commits
+
+## Browser
+
+In the [`skills/web-browser`](skills/web-browser) folder is a Claude Skill that helps it to use puppeteer in a node environment to browse the web.  This significantly improves on using a browser MCP.  You will need to go intot he tools folder once to run `npm i`.  This was stolen from [Mario Zechner](https://mariozechner.at/posts/2025-11-02-what-if-you-dont-need-mcp/).
