@@ -64,6 +64,7 @@ In the [`skills/ghidra`](skills/ghidra) folder is a skill for automated reverse 
 Custom hooks for the PI Coding Agent can be found in the [`pi-hooks`](pi-hooks) folder:
 
 * [`qna.ts`](pi-hooks/qna.ts) - Extracts questions from the last assistant message into the editor for easy answering. Uses Claude Haiku for cost-efficient extraction when available.
+* [`ask.ts`](pi-hooks/ask.ts) - Alternative to `qna.ts` with a custom interactive TUI for answering questions one by one.
 
 ## PI Coding Agent Themes
 
