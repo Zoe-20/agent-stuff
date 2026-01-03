@@ -522,10 +522,10 @@ export default function (pi: HookAPI) {
 			pi.sendMessage(
 				{
 					customType: "answers",
-					content: answersResult,
+					content: "I answered your questions in the following way:\n\n" + answersResult,
 					display: true,
 				},
-				true,
+				{ triggerTurn: true },
 			);
 		},
 	});
