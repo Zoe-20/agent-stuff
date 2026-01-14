@@ -331,8 +331,14 @@ async function applyPatchHunk(hunk: PatchHunk, cwd: string): Promise<AppliedChan
 	}
 }
 
-function isCodexModelId(modelId: string | undefined): boolean {
-	return modelId?.toLowerCase().includes("codex") ?? false;
+function isCodexModel(model: { id?: string; provider?: string } | string | undefined): boolean {
+	if (!model) return false;
+	if (typeof model === "string") {
+		return model.toLowerCase().includes("codex");
+	}
+	const providerMatch = model.provider?.toLowerCase().includes("codex") ?? false;
+	const idMatch = model.id?.toLowerCase().includes("codex") ?? false;
+	return providerMatch || idMatch;
 }
 
 function formatChanges(changes: AppliedChange[]): string {
@@ -573,13 +579,6 @@ export default function (pi: ExtensionAPI) {
 			"Runs a local shell command and returns its output.",
 			shellSchema,
 		);
-		registerShellVariant(
-			"container.exec",
-			"container.exec",
-			"Runs a shell command inside the configured container and returns its output (local fallback).",
-			shellSchema,
-		);
-
 		pi.registerTool({
 			name: "shell_command",
 			label: "shell_command",
@@ -593,14 +592,12 @@ export default function (pi: ExtensionAPI) {
 		});
 	};
 
-	const updateActiveTools = (modelId?: string) => {
+	const updateActiveTools = (model?: { id?: string; provider?: string }) => {
 		const activeTools = new Set(pi.getActiveTools());
-		const shouldEnable = isCodexModelId(modelId);
+		const shouldEnable = isCodexModel(model);
 		let changed = false;
 
 		if (shouldEnable) {
-			registerApplyPatchTool();
-			registerShellTool();
 			const exposedTools = ["apply_patch", "shell"];
 			for (const tool of exposedTools) {
 				if (!activeTools.has(tool)) {
@@ -609,7 +606,7 @@ export default function (pi: ExtensionAPI) {
 				}
 			}
 		} else {
-			const codexTools = ["apply_patch", "shell", "shell_command", "local_shell", "container.exec"];
+			const codexTools = ["apply_patch", "shell", "shell_command", "local_shell"];
 			for (const tool of codexTools) {
 				if (activeTools.delete(tool)) {
 					changed = true;
@@ -622,11 +619,14 @@ export default function (pi: ExtensionAPI) {
 		}
 	};
 
+	registerApplyPatchTool();
+	registerShellTool();
+
 	pi.on("session_start", (_event, ctx) => {
-		updateActiveTools(ctx.model?.id);
+		updateActiveTools(ctx.model);
 	});
 
 	pi.on("model_select", (event) => {
-		updateActiveTools(event.model?.id);
+		updateActiveTools(event.model);
 	});
 }
