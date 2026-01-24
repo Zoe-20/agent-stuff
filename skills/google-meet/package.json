@@ -1,8 +1,0 @@
-{
-  "name": "google-meet-skill",
-  "private": true,
-  "type": "module",
-  "dependencies": {
-    "googleapis": "^140.0.0"
-  }
-}

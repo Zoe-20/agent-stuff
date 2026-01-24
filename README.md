@@ -39,7 +39,6 @@ All skill files are in the [`skills`](skills) folder:
 * [`/sentry`](skills/sentry) - Alternative way to access Sentry as a Claude Skill for reading issues
 * [`/improve-skill`](skills/improve-skill) - Claude Skill for analyzing coding agent sessions to improve or create new skills
 * [`/pi-share`](skills/pi-share) - Claude Skill for loading and parsing session transcripts from shittycodingagent.ai
-* [`/google-meet`](skills/google-meet) - Claude Skill for creating Google Meet spaces with auto recording/transcription enabled (hardcoded for earendil.com only)
 * [`/anachb`](skills/anachb) - Claude Skill for querying Austrian public transport (VOR AnachB) for departures, routes, and disruptions
 * [`/oebb-scotty`](skills/oebb-scotty) - Claude Skill for Austrian rail travel planning via ÖBB Scotty API
 
