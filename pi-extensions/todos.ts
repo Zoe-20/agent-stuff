@@ -76,7 +76,7 @@ const TodoParams = Type.Object({
 
 type TodoAction = "list" | "list-all" | "get" | "create" | "update" | "append" | "delete";
 
-type TodoOverlayAction = "refine" | "close" | "reopen" | "work" | "delete" | "cancel" | "actions";
+type TodoOverlayAction = "work" | "refine" | "close" | "reopen" | "delete" | "cancel" | "actions";
 
 type TodoMenuAction = TodoOverlayAction | "copy-path" | "close-dialog";
 
@@ -234,7 +234,7 @@ class TodoSelectorComponent extends Container implements Focusable {
 		this.hintText.setText(
 			this.theme.fg(
 				"dim",
-				"Type to search • ↑↓ select • Enter view • Ctrl+Shift+A actions • Ctrl+Shift+R refine • Ctrl+Shift+W work • Esc close",
+				"Type to search • ↑↓ select • Enter view • Ctrl+Shift+A actions • Ctrl+Shift+W work • Ctrl+Shift+R refine • Esc close",
 			),
 		);
 	}
@@ -501,7 +501,7 @@ class TodoDetailOverlayComponent {
 		const actions = this.theme.fg("accent", "a") + this.theme.fg("muted", " actions");
 		const del = this.theme.fg("error", "d") + this.theme.fg("muted", " delete todo");
 		const back = this.theme.fg("dim", "esc back");
-		const pieces = [refine, work, statusAction, actions, del, back];
+		const pieces = [work, refine, statusAction, actions, del, back];
 
 		let line = pieces.join(this.theme.fg("muted", " • "));
 		if (this.totalLines > this.viewHeight) {
@@ -1458,8 +1458,8 @@ export default function todosExtension(pi: ExtensionAPI) {
 					const record = "body" in todo ? todo : await resolveTodoRecord(todo);
 					if (!record) return;
 					const options: SelectItem[] = [
-						{ value: "refine", label: "refine", description: "Refine task" },
 						{ value: "work", label: "work", description: "Work on todo" },
+						{ value: "refine", label: "refine", description: "Refine task" },
 						{ value: "close", label: "close", description: "Close todo" },
 						{ value: "reopen", label: "reopen", description: "Reopen todo" },
 						{ value: "copy-path", label: "copy", description: "Copy todo path into prompt" },
