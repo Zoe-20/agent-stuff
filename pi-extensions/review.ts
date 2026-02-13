@@ -470,12 +470,12 @@ function getUserFacingHint(target: ReviewTarget): string {
 	}
 }
 
-// Review preset options for the selector
+// Review preset options for the selector (keep this order stable)
 const REVIEW_PRESETS = [
-	{ value: "pullRequest", label: "Review a pull request", description: "(GitHub PR)" },
-	{ value: "baseBranch", label: "Review against a base branch", description: "(local)" },
 	{ value: "uncommitted", label: "Review uncommitted changes", description: "" },
+	{ value: "baseBranch", label: "Review against a base branch", description: "(local)" },
 	{ value: "commit", label: "Review a commit", description: "" },
+	{ value: "pullRequest", label: "Review a pull request", description: "(GitHub PR)" },
 	{ value: "folder", label: "Review a folder (or more)", description: "(snapshot, not diff)" },
 	{ value: "custom", label: "Custom review instructions", description: "" },
 ] as const;
@@ -517,21 +517,14 @@ export default function reviewExtension(pi: ExtensionAPI) {
 	 * Show the review preset selector
 	 */
 	async function showReviewSelector(ctx: ExtensionContext): Promise<ReviewTarget | null> {
-		// Determine smart default and reorder items
+		// Determine smart default (but keep the list order stable)
 		const smartDefault = await getSmartDefault();
-		const items: SelectItem[] = REVIEW_PRESETS
-			.slice() // copy to avoid mutating original
-			.sort((a, b) => {
-				// Put smart default first
-				if (a.value === smartDefault) return -1;
-				if (b.value === smartDefault) return 1;
-				return 0;
-			})
-			.map((preset) => ({
-				value: preset.value,
-				label: preset.label,
-				description: preset.description,
-			}));
+		const items: SelectItem[] = REVIEW_PRESETS.map((preset) => ({
+			value: preset.value,
+			label: preset.label,
+			description: preset.description,
+		}));
+		const smartDefaultIndex = items.findIndex((item) => item.value === smartDefault);
 
 		while (true) {
 			const result = await ctx.ui.custom<string | null>((tui, theme, _kb, done) => {
@@ -546,6 +539,11 @@ export default function reviewExtension(pi: ExtensionAPI) {
 					scrollInfo: (text) => theme.fg("dim", text),
 					noMatch: (text) => theme.fg("warning", text),
 				});
+
+				// Preselect the smart default without reordering the list
+				if (smartDefaultIndex >= 0) {
+					selectList.setSelectedIndex(smartDefaultIndex);
+				}
 
 				selectList.onSelect = (item) => done(item.value);
 				selectList.onCancel = () => done(null);
