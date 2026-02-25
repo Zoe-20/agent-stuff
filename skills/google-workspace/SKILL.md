@@ -3,90 +3,103 @@ name: google-workspace
 description: "Access Google Workspace APIs (Drive, Docs, Calendar, Gmail, Sheets, Slides, Chat, People) via local helper scripts without MCP. Handles OAuth login and direct API calls."
 ---
 
-# Google Workspace
+# Google Workspace (No MCP)
 
-Use this skill for Google Workspace tasks (Gmail, Drive, Calendar, Docs, Sheets, etc.).
+Use this skill when the user wants Google Workspace access in pi **without MCP**.
+
+This skill provides local Node.js helper scripts for:
+
+- OAuth login + token management
+- Direct Google API calls (generic and convenience commands)
 
 ## Files
 
-- `scripts/auth.js` — OAuth login/status/clear
-- `scripts/workspace.js` — JavaScript execution based API runner
+- `scripts/auth.js` — login/status/clear token
+- `scripts/workspace.js` — call APIs
+- `scripts/common.js` — shared auth logic
 
-## Usage
+## One-time setup
 
-Always use `exec`.
+1. Dependencies auto-install on first script run (`auth.js` or `workspace.js`).
+
+Optional (to prewarm manually):
 
 ```bash
-node scripts/workspace.js exec <<'JS'
-const me = await workspace.whoAmI();
-const files = await workspace.call('drive', 'files.list', {
-  pageSize: 5,
-  fields: 'files(id,name,mimeType)',
-});
-return { me, files: files.files };
-JS
+# Run in this skill directory (the one containing package.json)
+npm install
 ```
 
-Available inside exec scripts:
+2. Auth mode defaults to **cloud** (same hosted OAuth approach used by the workspace extension), so no local `credentials.json` is required.
 
-- `auth` (authorized OAuth client)
-- `google` (`googleapis` root)
-- `workspace.call(service, methodPath, params, {version})`
-- `workspace.service(service, {version})`
-- `workspace.whoAmI()`
+Optional local OAuth mode:
 
-Optional flags:
-
-- `--timeout <ms>` (default 30000, max 300000)
-- `--scopes s1,s2`
-- `--script 'return 42'`
-
-## Agent guidance
-
-1. Prefer one `exec` script per user request.
-2. Keep payloads small (`fields`, `maxResults`, minimal props).
-3. Use `Promise.all` for independent requests.
-4. Never print token contents.
-5. Use `scripts/auth.js` if you get auth errors.
-
-## Short Gmail counting example
+- Set `GOOGLE_WORKSPACE_AUTH_MODE=local`
+- Create a Google OAuth Desktop app and place credentials at:
 
 ```bash
-node scripts/workspace.js exec <<'JS'
-const gmail = google.gmail({ version: 'v1', auth });
-
-let trash = 0;
-let pageToken;
-do {
-  const res = await gmail.users.messages.list({
-    userId: 'me',
-    q: 'in:trash',
-    maxResults: 500,
-    pageToken,
-    fields: 'messages/id,nextPageToken',
-  });
-  trash += (res.data.messages || []).length;
-  pageToken = res.data.nextPageToken;
-} while (pageToken);
-
-return { currentlyInTrash: trash };
-JS
+~/.pi/google-workspace/credentials.json
 ```
 
-## Setup + auth
+Environment overrides:
+
+- `GOOGLE_WORKSPACE_CONFIG_DIR`
+- `GOOGLE_WORKSPACE_CREDENTIALS`
+- `GOOGLE_WORKSPACE_TOKEN`
+- `GOOGLE_WORKSPACE_AUTH_MODE` (`cloud` or `local`)
+- `GOOGLE_WORKSPACE_CLIENT_ID` (cloud mode)
+- `GOOGLE_WORKSPACE_CLOUD_FUNCTION_URL` (cloud mode)
+
+## Authenticate
 
 ```bash
+# Run in this skill directory
 node scripts/auth.js login
 ```
 
-Notes:
+This opens the browser for OAuth consent automatically.
+If you run an API call without a token, `workspace.js` will also trigger the same browser auth flow.
 
-- Dependencies auto-install on first run.
-- Default auth mode is **cloud** (no local `credentials.json` needed).
-- Optional local mode: `GOOGLE_WORKSPACE_AUTH_MODE=local` and credentials at `~/.pi/google-workspace/credentials.json`.
-- Useful diagnostics:
+Check auth status:
 
 ```bash
 node scripts/auth.js status
+```
+
+Clear token:
+
+```bash
 node scripts/auth.js clear
 ```
+
+## API usage
+
+### Generic API call
+
+```bash
+node scripts/workspace.js call <service> <method.path> '<json params>'
+```
+
+Examples:
+
+```bash
+node scripts/workspace.js call drive files.list '{"pageSize":5,"fields":"files(id,name)"}'
+node scripts/workspace.js call calendar events.list '{"calendarId":"primary","maxResults":10,"singleEvents":true,"orderBy":"startTime"}'
+node scripts/workspace.js call docs documents.get '{"documentId":"<DOC_ID>"}'
+```
+
+### Convenience commands
+
+```bash
+node scripts/workspace.js calendar-today
+node scripts/workspace.js drive-search "name contains 'Roadmap' and trashed=false"
+node scripts/workspace.js gmail-search "from:alice@example.com newer_than:7d"
+```
+
+## Operational guidance for the agent
+
+1. Always run `node scripts/auth.js status` first.
+2. If auth is missing/expired, run `node scripts/auth.js login` immediately and wait for user to complete browser consent.
+3. Do **not** just explain setup unless a command actually failed and its error output requires user action.
+4. Use `workspace.js call` for precise operations and return raw JSON results.
+5. For user-friendly output, post-process JSON after the call.
+6. Never print token contents back to the user.

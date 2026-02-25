@@ -216,7 +216,12 @@ function isExpiringSoon(credentials) {
   if (!credentials || !credentials.expiry_date) {
     return false;
   }
-  return credentials.expiry_date < Date.now() + 60_000;
+
+  // google-auth-library can eagerly refresh tokens a few minutes before expiry.
+  // In cloud auth mode we refresh via the cloud function (no client_secret locally),
+  // so refresh earlier than the default eager threshold to avoid failures.
+  const refreshSkewMs = 10 * 60_000; // 10 minutes
+  return credentials.expiry_date < Date.now() + refreshSkewMs;
 }
 
 function openUrlInBrowser(targetUrl) {
@@ -318,11 +323,12 @@ async function interactiveLoginCloud(scopes) {
   });
 
   console.error('ℹ️  Opening browser for Google OAuth login...');
+  console.error('ℹ️  If you cannot see the browser window, open this URL manually:');
+  console.error(authUrl);
   try {
     openUrlInBrowser(authUrl);
   } catch {
-    console.error('⚠️  Could not auto-open browser. Open this URL manually:');
-    console.error(authUrl);
+    console.error('⚠️  Could not auto-open browser. Please open the URL above manually.');
   }
 
   const loginTimeoutMs = 5 * 60 * 1000;
@@ -456,6 +462,25 @@ function stripInternalTokenFields(token) {
   return clone;
 }
 
+function stripTokenForClient(token, mode) {
+  const stripped = stripInternalTokenFields(token);
+  if (!stripped || typeof stripped !== 'object') {
+    return stripped;
+  }
+
+  // In cloud auth mode we do not have a client_secret locally, so the built-in
+  // OAuth2 refresh flow would fail. We refresh tokens via the cloud function
+  // ourselves and omit the refresh_token from the in-memory client credentials
+  // to prevent google-auth-library from attempting a refresh automatically.
+  if (mode === 'cloud') {
+    const clone = { ...stripped };
+    delete clone.refresh_token;
+    return clone;
+  }
+
+  return stripped;
+}
+
 async function authorize(options = {}) {
   const scopes = options.scopes || DEFAULT_SCOPES;
   const interactive = options.interactive !== false;
@@ -478,35 +503,37 @@ async function authorize(options = {}) {
     return interactiveLogin(scopes, mode);
   }
 
-  client.setCredentials(stripInternalTokenFields(token));
+  const refreshToken = token.refresh_token || null;
 
-  if (!isExpiringSoon(client.credentials)) {
+  client.setCredentials(stripTokenForClient(token, mode));
+
+  if (!isExpiringSoon({ expiry_date: token.expiry_date })) {
     return client;
   }
 
-  if (client.credentials.refresh_token) {
-    if (mode === 'local') {
+  if (mode === 'local') {
+    if (client.credentials.refresh_token) {
       const refreshed = await client.refreshAccessToken();
       const merged = {
         ...refreshed.credentials,
         refresh_token:
           refreshed.credentials.refresh_token || client.credentials.refresh_token,
       };
-      client.setCredentials(merged);
+      client.setCredentials(stripTokenForClient(merged, 'local'));
       saveToken(merged, 'local');
       return client;
     }
-
-    const refreshed = await refreshViaCloudFunction(
-      client.credentials.refresh_token,
-    );
-    const merged = {
-      ...refreshed,
-      refresh_token: client.credentials.refresh_token,
-    };
-    client.setCredentials(merged);
-    saveToken(merged, 'cloud');
-    return client;
+  } else {
+    if (refreshToken) {
+      const refreshed = await refreshViaCloudFunction(refreshToken);
+      const merged = {
+        ...refreshed,
+        refresh_token: refreshToken,
+      };
+      client.setCredentials(stripTokenForClient(merged, 'cloud'));
+      saveToken(merged, 'cloud');
+      return client;
+    }
   }
 
   if (!interactive) {
