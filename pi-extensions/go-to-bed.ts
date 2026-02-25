@@ -7,6 +7,16 @@ const QUIET_HOURS_END = 6; // exclusive
 const CONFIRM_PHRASE = "confirm-that-we-continue-after-midnight";
 const CONFIRM_COMMAND = `echo ${CONFIRM_PHRASE}`;
 
+// Marker block injected into the system prompt. We must strip old blocks on every turn,
+// otherwise the quiet-hours policy can "stick" even after quiet hours end.
+const POLICY_BLOCK_BEGIN = "<!-- go-to-bed:begin -->";
+const POLICY_BLOCK_END = "<!-- go-to-bed:end -->";
+
+function stripGoToBedPolicy(systemPrompt: string): string {
+	const re = new RegExp(`\\n?${POLICY_BLOCK_BEGIN}[\\s\\S]*?${POLICY_BLOCK_END}\\n?`, "g");
+	return systemPrompt.replace(re, "\n");
+}
+
 function isQuietHours(now: Date): boolean {
 	const hour = now.getHours();
 	if (QUIET_HOURS_START < QUIET_HOURS_END) {
@@ -43,8 +53,13 @@ export default function goToBedExtension(pi: ExtensionAPI) {
 
 	pi.on("before_agent_start", async (event) => {
 		const now = new Date();
+		const baseSystemPrompt = stripGoToBedPolicy(event.systemPrompt);
 		if (!isQuietHours(now)) {
 			confirmedNightKey = null;
+			// Important: return the stripped prompt so the policy doesn't persist past quiet hours.
+			if (baseSystemPrompt !== event.systemPrompt) {
+				return { systemPrompt: baseSystemPrompt };
+			}
 			return;
 		}
 
@@ -95,7 +110,7 @@ You MUST:
 					confirmed,
 				},
 			},
-			systemPrompt: `${event.systemPrompt}\n\n${policy}`,
+			systemPrompt: `${baseSystemPrompt}\n\n${POLICY_BLOCK_BEGIN}\n${policy}\n${POLICY_BLOCK_END}`,
 		};
 	});
 
