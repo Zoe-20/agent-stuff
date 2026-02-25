@@ -8,6 +8,15 @@ license: Stolen from Mario
 
 Minimal CDP tools for collaborative site exploration.
 
+## One-time setup (dependencies)
+
+From this skill directory:
+
+```bash
+cd scripts
+npm install
+```
+
 ## Start Chrome
 
 ```bash
